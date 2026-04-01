@@ -1,23 +1,25 @@
 # grip
 
-C++ all-in-one build tool & package manager.
+C++ 올인원 빌드 툴 & 패키지 매니저.
 
-Built with C++20. Direct compiler invocation (g++/clang++), TOML configuration, self-hosted package registry, Linux-first.
+C++20 기반. 컴파일러 직접 호출(g++/clang++), TOML 설정, 자체 패키지 레지스트리, Linux 우선.
 
-## Quick Start
+[English](docs/README_en.md)
+
+## 시작하기
 
 ```bash
-# Create a new project
+# 새 프로젝트 생성
 grip new myproject
 cd myproject
 
-# Build
+# 빌드
 grip build
 
-# Run
+# 실행
 grip run
 
-# Clean
+# 정리
 grip clean
 ```
 
@@ -55,51 +57,51 @@ compiler = "aarch64-linux-gnu-g++"
 ar = "aarch64-linux-gnu-ar"
 ```
 
-## Features
+## 기능
 
-### Incremental Build
+### 증분 빌드
 
-grip tracks `#include` dependencies and compares mtime to skip unchanged files. Only modified sources are recompiled, and object files are linked separately.
+`#include` 의존성을 추적하고 mtime을 비교해서 변경되지 않은 파일은 건너뜁니다. 수정된 소스만 재컴파일되고, 오브젝트 파일은 따로 링킹됩니다.
 
-### Parallel Build
+### 병렬 빌드
 
-Compilation units are distributed across a thread pool using `std::thread::hardware_concurrency()`. Independent source files compile simultaneously.
+컴파일 단위를 `std::thread::hardware_concurrency()` 기반 스레드 풀에 분배합니다. 독립적인 소스 파일이 동시에 컴파일됩니다.
 
-### Debug / Release Profiles
+### Debug / Release 프로필
 
 ```bash
 grip build              # debug: -O0 -g
 grip build --release    # release: -O2 -DNDEBUG
 ```
 
-Output is separated by profile: `build/debug/`, `build/release/`.
+출력은 프로필별로 분리: `build/debug/`, `build/release/`.
 
-Define custom profiles in `grip.toml` under `[profile.debug]` and `[profile.release]` with `opt_level`, `debug`, and `flags`.
+`grip.toml`의 `[profile.debug]`, `[profile.release]`에서 `opt_level`, `debug`, `flags`를 커스텀할 수 있습니다.
 
-### Package Manager
+### 패키지 매니저
 
-Cargo-style dependency management with a self-hosted registry server.
+Cargo 방식의 의존성 관리. 자체 레지스트리 서버에서 패키지를 설치합니다.
 
 ```bash
-# Install a specific version
+# 특정 버전 설치
 grip install fmt@10.1.0
 
-# Install latest version
+# 최신 버전 설치
 grip install fmt
 ```
 
-Packages are stored locally in `grip_modules/{name}/{version}/`. Dependencies declared in `grip.toml` are automatically installed on `grip build`.
+패키지는 `grip_modules/{name}/{version}/`에 로컬 저장됩니다. `grip.toml`에 선언된 의존성은 `grip build` 시 자동 설치됩니다.
 
-Features:
-- Recursive dependency resolution
-- Header-only library support (empty `source_dir`)
-- Per-package compiler flags
-- Static library (`.a`) generation
-- `compile_flags.txt` auto-generation for IDE support
+기능:
+- 재귀 의존성 해석
+- 헤더 온리 라이브러리 지원 (빈 `source_dir`)
+- 패키지별 컴파일러 플래그
+- 정적 라이브러리 (`.a`) 생성
+- `compile_flags.txt` 자동 생성 (IDE 지원)
 
 ### grip.lock
 
-Running `grip build` generates a `grip.lock` file that snapshots the exact dependency tree. When `grip.lock` is present, builds use locked versions instead of resolving from the registry.
+`grip build` 실행 시 `grip.lock` 파일이 생성되어 정확한 의존성 트리를 스냅샷합니다. `grip.lock`이 있으면 레지스트리 대신 lock 파일 기준으로 버전이 고정됩니다.
 
 ```toml
 [[package]]
@@ -118,7 +120,7 @@ dependencies = ["fmt@10.1.0"]
 grip test
 ```
 
-Discovers `.cpp` files in `tests/`, builds each as an independent binary (linked against project objects and dependencies), and runs them. Exit code 0 = PASS, non-zero = FAIL.
+`tests/` 디렉토리의 `.cpp` 파일을 각각 독립 바이너리로 빌드하고 실행합니다. 프로젝트 오브젝트와 의존성이 자동으로 링킹됩니다. exit code 0 = PASS, 그 외 = FAIL.
 
 ```
 [PASS] test_math
@@ -126,15 +128,15 @@ Discovers `.cpp` files in `tests/`, builds each as an independent binary (linked
 Results: 1/2 passed
 ```
 
-### Cross-Compilation
+### 크로스 컴파일
 
 ```bash
 grip build --target aarch64-linux-gnu
 ```
 
-Define target toolchains in `grip.toml` under `[target.<triple>]`. Packages are built per-target with separate `obj/` and `lib/` directories, so native and cross builds coexist without conflicts.
+`grip.toml`의 `[target.<triple>]`에서 타겟 툴체인을 정의합니다. 패키지는 타겟별로 `obj/`, `lib/` 디렉토리가 분리되어 네이티브 빌드와 크로스 빌드가 충돌 없이 공존합니다.
 
-## Project Structure
+## 프로젝트 구조
 
 ```
 myproject/
@@ -155,15 +157,15 @@ myproject/
     └── release/
 ```
 
-## Registry
+## 레지스트리
 
-grip uses a self-hosted registry server (built with yNet) that serves package metadata as JSON.
+grip은 yNet으로 구축된 자체 레지스트리 서버를 사용하며, 패키지 메타데이터를 JSON으로 제공합니다.
 
-**Endpoints:**
-- `GET /packages/:name` — package info with available versions
-- `GET /packages/:name/:version` — version-specific metadata with download URL
+**엔드포인트:**
+- `GET /packages/:name` — 패키지 정보 및 사용 가능한 버전 목록
+- `GET /packages/:name/:version` — 버전별 메타데이터 및 다운로드 URL
 
-**package.json format:**
+**package.json 형식:**
 ```json
 {
     "name": "spdlog",
@@ -177,6 +179,6 @@ grip uses a self-hosted registry server (built with yNet) that serves package me
 }
 ```
 
-## License
+## 라이선스
 
 Apache-2.0
