@@ -4,7 +4,7 @@ C++ all-in-one build tool & package manager.
 
 Built with C++20. Direct compiler invocation (g++/clang++), TOML configuration, self-hosted package registry, Linux-first.
 
-[한국어](README.md)
+[한국어](../README.md)
 
 ## Quick Start
 
