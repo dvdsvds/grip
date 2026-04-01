@@ -1,0 +1,5 @@
+build/
+grip_modules/
+compile_flags.txt
+*.o
+*.a
