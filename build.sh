@@ -12,4 +12,5 @@ g++ -std=c++20 \
     src/installer.cpp \
     src/lock.cpp \
     src/test.cpp \
+    src/process.cpp \
     -o grip

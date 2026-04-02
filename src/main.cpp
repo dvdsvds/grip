@@ -7,127 +7,124 @@
 #include "grip/installer.hpp"
 #include "grip/test.hpp"
 
-int main(int argc, char* argv[]) {
-    if(argc < 2) {
-        std::cout << "Usage: grip <command>" << std::endl;
-        return 1;
-    } else {
-        if(std::string(argv[1]) == "new") {
-            if(argc < 3) {
-                std::cerr << "Usage: " << argv[0] << " new <project_name>" << std::endl;
-                return 1;
-            }
+namespace fs = std::filesystem;
 
-            std::filesystem::path projectRoot = argv[2];
-            std::vector<std::string> subDirs = {"src", "include", "build"};
-            try {
-                for(const auto& dir : subDirs) {
-                    std::filesystem::create_directories(projectRoot / dir);
-                }
+struct CLIOptions {
+    std::string command;
+    std::string profile = "debug";
+    std::string target;
+    std::string arg;
+};
 
-                std::ofstream tomlFile(projectRoot / "grip.toml");
-                tomlFile << "[project]\n"
-                         << "name = \"" << argv[2] << "\"\n" 
-                         << "version = \"0.1.0\"\n"
-                         << "standard = \"c++20\"\n"
-                         << "compiler = \"g++\"\n\n"
-                         << "[build]\n"
-                         << "sources = [\"src/**/*.cpp\"]\n"
-                         << "include = [\"include\"]\n"
-                         << "output = \"build\"\n"
-                         << "type = \"executable\"\n";
-
-                std::filesystem::path mainCppPath = projectRoot / "src" / "main.cpp";
-                std::ofstream mainFile(mainCppPath);
-                if(mainFile.is_open()) {
-                    mainFile << "#include <iostream>\n\n"
-                             << "int main() {\n"
-                             << "    std::cout << \"Hello, Grip World!\" << std::endl;\n"
-                             << "    return 0;\n"
-                             << "}\n";
-                    mainFile.close();
-                }
-                std::cout << "Create directory structure: [" << argv[2] << "]" << std::endl;
-            } catch(const std::filesystem::filesystem_error& e) {
-                std::cout << "Error: " << e.what() << std::endl;
-            }
-        } else if(std::string(argv[1]) == "build") {
-            std::string profile = "debug";
-            std::string target = "";
-            for(int i = 2; i < argc; i++) {
-                if(std::string(argv[i]) == "--release") {
-                    profile = "release";
-                } else if(std::string(argv[i]) == "--target" && i + 1 < argc) {
-                    target = argv[++i];
-                }
-            }
-            grip::ProjectConfig config = grip::parseToml("grip.toml", profile, target);
-            auto root = grip::findProjectRoot();
-
-            if(grip::lockExists(root)) {
-                auto locked = grip::readLock(root);
-                std::vector<grip::LockEntry> dummy;
-                for(auto& entry : locked) {
-                    grip::install("127.0.0.1", 8080, entry.name + "@" + entry.version, dummy, config);
-                }
-            } else {
-                std::vector<grip::LockEntry> lockEntries;
-                for(auto& [name, version] : config.dependencies) {
-                    grip::install("127.0.0.1", 8080, name + "@" + version, lockEntries, config);
-                }
-                grip::writeLock(root, lockEntries);
-            }
-
-            auto source = grip::scanSource(config);
-            return grip::compile(config, source);
-        } else if(std::string(argv[1]) == "run") {
-            grip::ProjectConfig config = grip::parseToml("grip.toml");
-            auto source = grip::scanSource(config);
-            int result = grip::compile(config, source);
-            if(result == 0) {
-                system((std::filesystem::path(config.output) / config.name).string().c_str());
-            }
-            
-        } else if(std::string(argv[1]) == "clean") {
-            grip::ProjectConfig config = grip::parseToml("grip.toml");
-            std::filesystem::remove_all(config.output);
-            std::cout << "Clean [" << config.output << "] successful" << std::endl;
-        } else if(std::string(argv[1]) == "install") {
-            grip::ProjectConfig config = grip::parseToml("grip.toml");
-            std::vector<grip::LockEntry> lockEntries;
-            grip::install("127.0.0.1", 8080, argv[2], lockEntries, config);
-            auto root = grip::findProjectRoot();
-            grip::writeLock(root, lockEntries);
-        } else if(std::string(argv[1]) == "test") {
-            std::string profile = "debug";
-            for(int i = 2; i < argc; i++) {
-                if(std::string(argv[i]) == "--release") {
-                    profile = "release";
-                }
-            }
-            grip::ProjectConfig config = grip::parseToml("grip.toml", profile);
-            auto source = grip::scanSource(config);
-            auto root = grip::findProjectRoot();
-            if(grip::lockExists(root)) {
-                auto locked = grip::readLock(root);
-                std::vector<grip::LockEntry> dummy;
-                for(auto& entry : locked) {
-                    grip::install("127.0.0.1", 8080, entry.name + "@" + entry.version, dummy, config);
-                }
-            } else {
-                std::vector<grip::LockEntry> lockEntries;
-                for(auto& [name, version] : config.dependencies) {
-                    grip::install("127.0.0.1", 8080, name + "@" + version, lockEntries, config);
-                }
-                grip::writeLock(root, lockEntries);
-            }
-            grip::compile(config, source);
-            return grip::runTests(config);
-        }
-        else {
-            std::cerr << "Invalid command '" << argv[1] << "'" << std::endl;
-            std::cout << "Commands: new, build, run, clean, install" << std::endl;
-            return 1;
+static CLIOptions parseArgs(int argc, char* argv[]) {
+    CLIOptions opts;
+    if(argc >= 2) opts.command = argv[1];
+    for(int i = 2; i < argc; i++) {
+        std::string a = argv[i];
+        if(a == "--release") {
+            opts.profile = "release";
+        } else if(a == "--target" && i + 1 < argc) {
+            opts.target = argv[++i];
+        } else if(opts.arg.empty()) {
+            opts.arg = a;
         }
     }
+    return opts;
+}
+
+static void installDeps(const grip::ProjectConfig& config, const fs::path& root) {
+    if(grip::lockExists(root)) {
+        auto locked = grip::readLock(root);
+        std::vector<grip::LockEntry> dummy;
+        for(auto& entry : locked) {
+            grip::install("127.0.0.1", 8080, entry.name + "@" + entry.version, dummy, config);
+        }
+    } else {
+        std::vector<grip::LockEntry> lockEntries;
+        for(auto& [name, version] : config.dependencies) {
+            grip::install("127.0.0.1", 8080, name + "@" + version, lockEntries, config);
+        }
+        grip::writeLock(root, lockEntries);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    if(argc < 2) {
+        std::cout << "Usage: grip <command>\n"
+                  << "Commands: new, build, run, clean, install, test" << std::endl;
+        return 1;
+    }
+
+    auto opts = parseArgs(argc, argv);
+
+    if(opts.command == "new") {
+        if(opts.arg.empty()) {
+            std::cerr << "Usage: grip new <project_name>" << std::endl;
+            return 1;
+        }
+        fs::path projectRoot = opts.arg;
+        try {
+            for(auto& dir : {"src", "include", "build"}) {
+                fs::create_directories(projectRoot / dir);
+            }
+            std::ofstream toml(projectRoot / "grip.toml");
+            toml << "[project]\n"
+                 << "name = \"" << opts.arg << "\"\n"
+                 << "version = \"0.1.0\"\n"
+                 << "standard = \"c++20\"\n"
+                 << "compiler = \"g++\"\n\n"
+                 << "[build]\n"
+                 << "sources = [\"src\"]\n"
+                 << "include = [\"include\"]\n"
+                 << "output = \"build\"\n"
+                 << "type = \"bin\"\n";
+
+            std::ofstream main(projectRoot / "src" / "main.cpp");
+            main << "#include <iostream>\n\n"
+                 << "int main() {\n"
+                 << "    std::cout << \"Hello, Grip World!\" << std::endl;\n"
+                 << "    return 0;\n"
+                 << "}\n";
+
+            std::cout << "Created project: " << opts.arg << std::endl;
+        } catch(const fs::filesystem_error& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+    } else if(opts.command == "build") {
+        auto config = grip::parseToml("grip.toml", opts.profile, opts.target);
+        auto root = grip::findProjectRoot();
+        installDeps(config, root);
+        return grip::compile(config, grip::scanSource(config));
+
+    } else if(opts.command == "run") {
+        auto config = grip::parseToml("grip.toml", opts.profile, opts.target);
+        auto root = grip::findProjectRoot();
+        installDeps(config, root);
+        if(grip::compile(config, grip::scanSource(config)) == 0) {
+            return system((fs::path(config.output) / config.name).string().c_str());
+        }
+        return 1;
+
+    } else if(opts.command == "clean") {
+        auto config = grip::parseToml("grip.toml");
+        fs::path buildDir = fs::path(config.output).parent_path();
+        if(buildDir.empty()) buildDir = config.output;
+        fs::remove_all(buildDir);
+        std::cout << "Clean [" << buildDir.string() << "] successful" << std::endl; 
+
+    } else if(opts.command == "test") {
+        auto config = grip::parseToml("grip.toml", opts.profile, opts.target);
+        auto root = grip::findProjectRoot();
+        installDeps(config, root);
+        grip::compile(config, grip::scanSource(config));
+        return grip::runTests(config);
+
+    } else {
+        std::cerr << "Unknown command: " << opts.command << "\n"
+                  << "Commands: new, build, run, clean, install, test" << std::endl;
+        return 1;
+    }
+
+    return 0;
 }
