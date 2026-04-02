@@ -35,8 +35,20 @@ namespace grip {
                 std::ifstream file(entry.path());
                 auto json = nlohmann::json::parse(file);
                 if(json.contains("flags")) {
+                    fs::path sourceRoot = entry.path().parent_path();
+                    for(auto& dir : fs::directory_iterator(sourceRoot)) {
+                        if(dir.is_directory() && dir.path().filename() != "package.json") {
+                            sourceRoot = dir.path();
+                            break;
+                        }
+                    }
                     for(auto& f : json["flags"]) {
-                        flags.push_back(f.get<std::string>());
+                        std::string flag = f.get<std::string>();
+                        size_t pos = flag.find("{sourceRoot}");
+                        if(pos != std::string::npos) {
+                            flag.replace(pos, 12, sourceRoot.string());
+                        }
+                        flags.push_back(flag);
                     }
                 }
             }

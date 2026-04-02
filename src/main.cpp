@@ -113,6 +113,16 @@ int main(int argc, char* argv[]) {
         fs::remove_all(buildDir);
         std::cout << "Clean [" << buildDir.string() << "] successful" << std::endl; 
 
+    } else if(opts.command == "install") {
+        if(opts.arg.empty()) {
+            std::cerr << "Usage: grip install <package>" << std::endl;
+            return 1;
+        }
+        auto config = grip::parseToml("grip.toml");
+        auto root = grip::findProjectRoot();
+        std::vector<grip::LockEntry> lockEntries;
+        grip::install("127.0.0.1", 8080, opts.arg, lockEntries, config);
+        grip::writeLock(root, lockEntries); 
     } else if(opts.command == "test") {
         auto config = grip::parseToml("grip.toml", opts.profile, opts.target);
         auto root = grip::findProjectRoot();

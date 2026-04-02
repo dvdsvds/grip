@@ -45,7 +45,7 @@ namespace grip {
         fs::path targetLib = sourceRoot / "lib" / targetDir;
         if(!fs::exists(targetLib)) return true;
         for(auto& entry : fs::directory_iterator(targetLib)) {
-            if(entry.path().extension() == ".a") return false;
+                if(entry.path().extension() == ".a") return false;
         }
         return true;
     }
@@ -83,7 +83,14 @@ namespace grip {
             args.push_back("-c");
             args.push_back("-std=" + config.standard);
             args.push_back("-I" + (sourceRoot / include_dir).string());
-            for(const auto& flag : pkg_flags) args.push_back(flag);
+            for(const auto& flag : pkg_flags) {
+                std::string f = flag;
+                size_t pos = f.find("{sourceRoot}");
+                if(pos != std::string::npos) {
+                    f.replace(pos, 12, sourceRoot.string());
+                }
+                args.push_back(f);
+            }
             for(auto& inc : moduleIncs) args.push_back("-I" + inc);
             args.push_back("-o");
             args.push_back((sourceRoot / "obj" / targetDir / (source.stem().string() + ".o")).string());
