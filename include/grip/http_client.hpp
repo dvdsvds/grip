@@ -2,5 +2,5 @@
 
 #include <string>
 namespace grip {
-    std::string httpGet(const std::string& host, int port, const std::string& path);
+    std::string httpGet(const std::string& host, int port, const std::string& path, bool use_tls = false);
 }

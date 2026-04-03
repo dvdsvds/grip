@@ -37,12 +37,12 @@ static void installDeps(const grip::ProjectConfig& config, const fs::path& root)
         auto locked = grip::readLock(root);
         std::vector<grip::LockEntry> dummy;
         for(auto& entry : locked) {
-            grip::install("127.0.0.1", 8080, entry.name + "@" + entry.version, dummy, config);
+            grip::install("grip.ynetcpp.dev", 8443, entry.name + "@" + entry.version, dummy, config);
         }
     } else {
         std::vector<grip::LockEntry> lockEntries;
         for(auto& [name, version] : config.dependencies) {
-            grip::install("127.0.0.1", 8080, name + "@" + version, lockEntries, config);
+            grip::install("grip.ynetcpp.dev", 8443, name + "@" + version, lockEntries, config);
         }
         grip::writeLock(root, lockEntries);
     }
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
         auto config = grip::parseToml("grip.toml");
         auto root = grip::findProjectRoot();
         std::vector<grip::LockEntry> lockEntries;
-        grip::install("127.0.0.1", 8080, opts.arg, lockEntries, config);
+        grip::install("grip.ynetcpp.dev", 8443, opts.arg, lockEntries, config);
         grip::writeLock(root, lockEntries); 
     } else if(opts.command == "test") {
         auto config = grip::parseToml("grip.toml", opts.profile, opts.target);

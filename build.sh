@@ -13,4 +13,5 @@ g++ -std=c++20 \
     src/lock.cpp \
     src/test.cpp \
     src/process.cpp \
-    -o grip
+    -o grip \
+    -lssl -lcrypto 
