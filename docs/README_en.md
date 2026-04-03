@@ -6,6 +6,18 @@ Built with C++20. Direct compiler invocation (g++/clang++), TOML configuration, 
 
 [한국어](../README.md)
 
+## Installation
+```bash
+# Dependencies
+sudo apt install g++ libssl-dev
+
+# Build and install
+git clone https://github.com/dvdsvds/grip.git
+cd grip
+./build.sh
+sudo cp grip /usr/local/bin/grip
+```
+
 ## Quick Start
 
 ```bash
