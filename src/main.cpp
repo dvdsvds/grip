@@ -6,6 +6,8 @@
 #include "grip/scanner.hpp"
 #include "grip/installer.hpp"
 #include "grip/test.hpp"
+#include "grip/http_client.hpp"
+#include "json.hpp"
 
 namespace fs = std::filesystem;
 
@@ -123,6 +125,7 @@ int main(int argc, char* argv[]) {
         std::vector<grip::LockEntry> lockEntries;
         grip::install("grip.ynetcpp.dev", 8443, opts.arg, lockEntries, config);
         grip::writeLock(root, lockEntries); 
+
     } else if(opts.command == "test") {
         auto config = grip::parseToml("grip.toml", opts.profile, opts.target);
         auto root = grip::findProjectRoot();
@@ -130,7 +133,18 @@ int main(int argc, char* argv[]) {
         grip::compile(config, grip::scanSource(config));
         return grip::runTests(config);
 
-    } else {
+    } else if(opts.command == "search") {
+        std::string response = grip::httpGet("grip.ynetcpp.dev", 8443, "/packages");
+        if(response.empty()) {
+            std::cerr << "Failed to fetch package list" << std::endl;
+            return 1;
+        }
+        auto json = nlohmann::json::parse(response);
+        for(auto& pkg : json["packages"]) {
+            std::cout << pkg.get<std::string>() << std::endl;
+        }
+    }
+    else {
         std::cerr << "Unknown command: " << opts.command << "\n"
                   << "Commands: new, build, run, clean, install, test" << std::endl;
         return 1;
